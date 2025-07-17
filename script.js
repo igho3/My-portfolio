@@ -87,24 +87,134 @@ window.addEventListener('load', () => {
 
 window.addEventListener('scroll', animateOnScroll);
 
-// Form submission
-const contactForm = document.querySelector('.contact-form');
-if (contactForm) {
-    contactForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        
-        // Get form values
-        const name = contactForm.querySelector('input[type="text"]').value;
-        const email = contactForm.querySelector('input[type="email"]').value;
-        const message = contactForm.querySelector('textarea').value;
-        
-        // Here you would typically send the data to a server
-        console.log({ name, email, message });
-        
-        // Show success message
-        alert('Thank you for your message! I will get back to you soon.');
-        
-        // Reset form
-        contactForm.reset();
+  // Modal Functions
+function openForm() {
+    const modal = document.getElementById("hireFormPopup");
+    if (modal) {
+      modal.classList.add("active");
+      document.body.style.overflow = "hidden";
+      
+      // Add overlay
+      const overlay = document.createElement('div');
+      overlay.className = 'modal-overlay active';
+      overlay.onclick = closeForm;
+      document.body.appendChild(overlay);
+    }
+  }
+  
+  function closeForm() {
+    const modal = document.getElementById("hireFormPopup");
+    if (modal) {
+      modal.classList.remove("active");
+      document.body.style.overflow = "auto";
+      
+      // Remove overlay
+      const overlay = document.querySelector('.modal-overlay');
+      if (overlay) overlay.remove();
+    }
+  }
+  
+  // Escape key listener
+  document.addEventListener('keydown', function(e) {
+    if (e.key === "Escape") closeForm();
+  });
+  
+  // Form Submission Handler (for both modal and contact form)
+  function setupFormSubmission(formSelector, isModal = false) {
+    const form = document.querySelector(formSelector);
+    if (!form) return;
+  
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const submitBtn = form.querySelector('button[type="submit"]');
+      const originalBtnText = submitBtn.innerHTML;
+  
+      // Show loading state
+      submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+      submitBtn.disabled = true;
+  
+      try {
+        const response = await fetch(form.action, {
+          method: 'POST',
+          body: new FormData(form),
+          headers: { 'Accept': 'application/json' }
+        });
+  
+        if (response.ok) {
+          // Show success message
+          if (isModal) {
+            showModalSuccess();
+          } else {
+            showInlineSuccess(form);
+          }
+          form.reset();
+        } else {
+          throw new Error('Submission failed');
+        }
+      } catch (error) {
+        if (isModal) {
+          showModalError();
+        } else {
+          showInlineError(form);
+        }
+      } finally {
+        submitBtn.innerHTML = originalBtnText;
+        submitBtn.disabled = false;
+      }
     });
-}
+  }
+  
+  // Message Functions
+  function showModalSuccess() {
+    const modalContent = document.querySelector('#hireFormPopup .modal-content');
+    modalContent.innerHTML = `
+      <div class="form-success">
+        <i class="fas fa-check-circle"></i>
+        <h3>Message Sent Successfully!</h3>
+        <p>I'll get back to you soon.</p>
+        <button onclick="closeForm()" class="btn">Close</button>
+      </div>
+    `;
+  }
+  
+  function showModalError() {
+    const modalContent = document.querySelector('#hireFormPopup .modal-content');
+    modalContent.innerHTML = `
+      <div class="form-error">
+        <i class="fas fa-exclamation-circle"></i>
+        <h3>Error Sending Message</h3>
+        <p>Please try again or email me directly.</p>
+        <button onclick="location.reload()" class="btn">Try Again</button>
+      </div>
+    `;
+  }
+  
+  function showInlineSuccess(form) {
+    const successMsg = document.createElement('div');
+    successMsg.className = 'form-success';
+    successMsg.innerHTML = `
+      <i class="fas fa-check-circle"></i>
+      <p>Message sent! I'll get back to you soon.</p>
+    `;
+    form.appendChild(successMsg);
+    setTimeout(() => successMsg.remove(), 5000);
+  }
+  
+  function showInlineError(form) {
+    const errorMsg = document.createElement('div');
+    errorMsg.className = 'form-error';
+    errorMsg.innerHTML = `
+      <i class="fas fa-exclamation-circle"></i>
+      <p>Oops! Something went wrong. Please try again.</p>
+    `;
+    form.appendChild(errorMsg);
+  }
+  
+  // Initialize all forms
+  document.addEventListener('DOMContentLoaded', function() {
+    // Modal form
+    setupFormSubmission('#hireFormPopup form', true);
+    
+    // Regular contact form
+    setupFormSubmission('.contact-form');
+  });
